@@ -62,23 +62,29 @@ L.TileLayer.include({
                 });
                 if (Date.now() > data.timestamp + this.options.cacheMaxAge && !this.options.useOnlyCache) {
                     // Tile is too old, try to refresh it
-                    // 					console.log('Tile is too old: ', tileUrl);
+                    //                  console.log('Tile is too old: ', tileUrl);
 
                     if (this.options.saveToCache) {
                         tile.onload = this._saveTile(tileUrl, data._revs_info[0].rev);
                     }
-                    tile.crossOrigin = 'Anonymous';
+                    tile.setAttribute('crossOrigin', 'Anonymous');
                     tile.src = tileUrl;
                     tile.onerror = function(ev) {
                         // If the tile is too old but couldn't be fetched from the network,
                         //   serve the one still in cache.
                         this.src = data.dataUrl;
-                    }
+                    };
                 } else {
                     // Serve tile from cached data
-                    // 					console.log('Tile is cached: ', tileUrl);
+                    //                  console.log('Tile is cached: ', tileUrl);
+                    var tries = 5;
+                    tile.removeAttribute('crossOrigin');
                     tile.onload = this._tileOnLoad;
+                    tile.onerror = function(ev, blah) {
+                        console.log(tile, data);
+                    };
                     tile.src = data.dataUrl; // data.dataUrl is already a base64-encoded PNG image.
+
                 }
             } else {
                 this.fire('tilecachemiss', {
@@ -87,18 +93,18 @@ L.TileLayer.include({
                 });
                 if (this.options.useOnlyCache) {
                     // Offline, not cached
-                    // 					console.log('Tile not in cache', tileUrl);
+                    //                  console.log('Tile not in cache', tileUrl);
                     tile.onload = this._tileOnLoad;
                     tile.src = L.Util.emptyImageUrl;
                 } else {
                     // Online, not cached, request the tile normally
-                    // 					console.log('Requesting tile normally', tileUrl);
+                    //                  console.log('Requesting tile normally', tileUrl);
                     if (this.options.saveToCache) {
                         tile.onload = this._saveTile(tileUrl);
                     } else {
                         tile.onload = this._tileOnLoad;
                     }
-                    tile.crossOrigin = 'Anonymous';
+                    tile.setAttribute('crossOrigin', 'Anonymous');
                     tile.src = tileUrl;
                 }
             }
@@ -113,6 +119,7 @@ L.TileLayer.include({
         return function(ev) {
             if (this._canvas === null) return;
             var img = ev.target;
+            img.setAttribute('crossOrigin', 'Anonymous');
             L.TileLayer.prototype._tileOnLoad.call(img, ev);
             this._canvas.width = img.naturalWidth || img.width;
             this._canvas.height = img.naturalHeight || img.height;
@@ -170,7 +177,7 @@ L.TileLayer.include({
             minZoom: minZoom,
             maxZoom: maxZoom,
             queueLength: queue.length
-        }
+        };
         this.fire('seedstart', seedData);
         var tile = this._createTile();
         tile._layer = this;
@@ -202,7 +209,7 @@ L.TileLayer.include({
                     this._saveTile(url)(ev);
                     this._seedOneTile(tile, remaining, seedData);
                 }.bind(this);
-                tile.crossOrigin = 'Anonymous';
+                tile.setAttribute('crossOrigin', 'Anonymous');
                 tile.src = url;
             } else {
                 this._seedOneTile(tile, remaining, seedData);
