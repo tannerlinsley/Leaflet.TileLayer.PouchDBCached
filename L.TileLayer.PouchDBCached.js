@@ -150,7 +150,7 @@ L.TileLayer.include({
         if (!this._map) return;
 
         var boxes = [];
-        var map = [];
+        var map = {};
         var queue = [];
 
         if (points) {
@@ -169,9 +169,9 @@ L.TileLayer.include({
 
 
         for (var w = 0; w < boxes.length; w++) {
-            for (var z = minZoom; z < maxZoom; z++) {
+            for (var z = minZoom; z < maxZoom + 1; z++) {
                 if (!map[z]) {
-                    map[z] = [];
+                    map[z] = {};
                 }
 
                 var northEastPoint = this._map.project(boxes[w].getNorthEast(), z);
@@ -186,7 +186,7 @@ L.TileLayer.include({
 
                 for (var j = tileBounds.min.y; j <= tileBounds.max.y; j++) {
                     if (!map[z][j]) {
-                        map[z][j] = [];
+                        map[z][j] = {};
                     }
                     for (var a = tileBounds.min.x; a <= tileBounds.max.x; a++) {
                         if (!map[z][j][a]) {
