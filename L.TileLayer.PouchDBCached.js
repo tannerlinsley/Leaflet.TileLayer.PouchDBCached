@@ -145,29 +145,57 @@ L.TileLayer.include({
     //   the minimum and maximum zoom levels
     // Use with care! This can spawn thousands of requests and
     //   flood tileservers!
-    seed: function(bbox, minZoom, maxZoom) {
+    seed: function(points, bbox, minZoom, maxZoom) {
         if (minZoom > maxZoom) return;
         if (!this._map) return;
 
+        var boxes = [];
+        var map = [];
         var queue = [];
 
-        for (var z = minZoom; z < maxZoom; z++) {
+        if (points) {
+            for (var i = 0; i < points.length; i++) {
+                var coords = [
+                    points[i][1] - 0.000533,
+                    points[i][0] - 0.000696,
+                    points[i][1] + 0.000533,
+                    points[i][0] + 0.000696,
+                ];
+                boxes.push(L.latLngBounds(L.latLng(coords[0], coords[1]), L.latLng(coords[2], coords[3])));
+            }
+        } else {
+            boxes.push(bbox);
+        }
 
-            var northEastPoint = this._map.project(bbox.getNorthEast(), z);
-            var southWestPoint = this._map.project(bbox.getSouthWest(), z);
 
-            // Calculate tile indexes as per L.TileLayer._update and
-            //   L.TileLayer._addTilesFromCenterOut
-            var tileSize = this._getTileSize();
-            var tileBounds = L.bounds(
-                northEastPoint.divideBy(tileSize)._floor(),
-                southWestPoint.divideBy(tileSize)._floor());
+        for (var w = 0; w < boxes.length; w++) {
+            for (var z = minZoom; z < maxZoom; z++) {
+                if (!map[z]) {
+                    map[z] = [];
+                }
 
-            for (var j = tileBounds.min.y; j <= tileBounds.max.y; j++) {
-                for (var i = tileBounds.min.x; i <= tileBounds.max.x; i++) {
-                    point = new L.Point(i, j);
-                    point.z = z;
-                    queue.push(this.getTileUrl(point));
+                var northEastPoint = this._map.project(boxes[w].getNorthEast(), z);
+                var southWestPoint = this._map.project(boxes[w].getSouthWest(), z);
+
+                // Calculate tile indexes as per L.TileLayer._update and
+                //   L.TileLayer._addTilesFromCenterOut
+                var tileSize = this._getTileSize();
+                var tileBounds = L.bounds(
+                    northEastPoint.divideBy(tileSize)._floor(),
+                    southWestPoint.divideBy(tileSize)._floor());
+
+                for (var j = tileBounds.min.y; j <= tileBounds.max.y; j++) {
+                    if (!map[z][j]) {
+                        map[z][j] = [];
+                    }
+                    for (var a = tileBounds.min.x; a <= tileBounds.max.x; a++) {
+                        if (!map[z][j][a]) {
+                            point = new L.Point(a, j);
+                            point.z = z;
+                            map[z][j][a] = true;
+                            queue.push(this.getTileUrl(point));
+                        }
+                    }
                 }
             }
         }
