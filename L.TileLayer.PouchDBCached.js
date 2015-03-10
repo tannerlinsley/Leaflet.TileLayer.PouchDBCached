@@ -62,7 +62,6 @@ L.TileLayer.include({
                 });
                 if (Date.now() > data.timestamp + this.options.cacheMaxAge && !this.options.useOnlyCache) {
                     // Tile is too old, try to refresh it
-                    //                  console.log('Tile is too old: ', tileUrl);
 
                     if (this.options.saveToCache) {
                         tile.onload = this._saveTile(tileUrl, data._revs_info[0].rev);
@@ -76,13 +75,10 @@ L.TileLayer.include({
                     };
                 } else {
                     // Serve tile from cached data
-                    //                  console.log('Tile is cached: ', tileUrl);
                     var tries = 5;
                     tile.removeAttribute('crossOrigin');
                     tile.onload = this._tileOnLoad;
-                    tile.onerror = function(ev, blah) {
-                        console.log(tile, data);
-                    };
+                    tile.onerror = function(ev, blah) {};
                     tile.src = data.dataUrl; // data.dataUrl is already a base64-encoded PNG image.
 
                 }
@@ -93,12 +89,10 @@ L.TileLayer.include({
                 });
                 if (this.options.useOnlyCache) {
                     // Offline, not cached
-                    //                  console.log('Tile not in cache', tileUrl);
                     tile.onload = this._tileOnLoad;
                     tile.src = L.Util.emptyImageUrl;
                 } else {
                     // Online, not cached, request the tile normally
-                    //                  console.log('Requesting tile normally', tileUrl);
                     if (this.options.saveToCache) {
                         tile.onload = this._saveTile(tileUrl);
                     } else {
@@ -145,7 +139,7 @@ L.TileLayer.include({
     //   the minimum and maximum zoom levels
     // Use with care! This can spawn thousands of requests and
     //   flood tileservers!
-    seed: function(points, bbox, minZoom, maxZoom) {
+    seed: function(points, lines, bbox, minZoom, maxZoom, feet, callback) {
         if (minZoom > maxZoom) return;
         if (!this._map) return;
 
@@ -153,18 +147,29 @@ L.TileLayer.include({
         var map = {};
         var queue = [];
 
+        var buffer = feet / 6 * 0.0001;
+
         if (points) {
             for (var i = 0; i < points.length; i++) {
-                var coords = [
-                    points[i][1] - 0.000533,
-                    points[i][0] - 0.000696,
-                    points[i][1] + 0.000533,
-                    points[i][0] + 0.000696,
-                ];
-                boxes.push(L.latLngBounds(L.latLng(coords[0], coords[1]), L.latLng(coords[2], coords[3])));
+                boxes.push(makeBox(points[i], buffer));
             }
-        } else {
-            boxes.push(bbox);
+        }
+
+        if (lines) {
+            for (var i = 0; i < lines.length; i++) {
+                for (var a = 0; a < lines[i].length; a++) {
+                    if (lines[i][a - 1]) {
+                        var distance = getDistance(lines[i][a - 1], lines[i][a]);
+                        if (distance > buffer) {
+                            var extras = getMiddles(lines[i][a - 1], lines[i][a], distance / buffer);
+                            for (var x = 0; x < extras.length; x++) {
+                                boxes.push(makeBox(extras[x], buffer));
+                            }
+                        }
+                    }
+                    boxes.push(makeBox(lines[i][a], buffer));
+                }
+            }
         }
 
 
@@ -200,6 +205,7 @@ L.TileLayer.include({
             }
         }
 
+
         var seedData = {
             bbox: bbox,
             minZoom: minZoom,
@@ -210,6 +216,43 @@ L.TileLayer.include({
         var tile = this._createTile();
         tile._layer = this;
         this._seedOneTile(tile, queue, seedData);
+
+        function makeBox(point, buffer) {
+            var coords = [
+                point[0] - buffer,
+                point[1] - buffer,
+                point[0] + buffer,
+                point[1] + buffer,
+            ];
+            return L.latLngBounds(L.latLng(coords[0], coords[1]), L.latLng(coords[2], coords[3]));
+        }
+
+        function getDistance(start, end) {
+            var xs = 0;
+            var ys = 0;
+
+            xs = end[1] - start[1];
+            xs = xs * xs;
+
+            ys = end[0] - start[0];
+            ys = ys * ys;
+
+            return Math.sqrt(xs + ys);
+        }
+
+        function getMiddles(start, end, count) {
+
+            var coords = [];
+
+            for (var i = 0; i < count - 1; i++) {
+                var x = start[1] + (end[1] - start[1]) * (i + 1) / count;
+                var y = start[0] + (end[0] - start[0]) * (i + 1) / count;
+
+                coords.push([x, y]);
+            }
+
+            return coords;
+        }
     },
 
     // Uses a defined tile to eat through one item in the queue and
