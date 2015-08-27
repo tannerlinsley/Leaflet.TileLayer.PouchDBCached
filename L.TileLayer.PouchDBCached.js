@@ -156,22 +156,21 @@ L.TileLayer.include({
         }
 
         if (lines) {
-            for (var i = 0; i < lines.length; i++) {
-                for (var a = 0; a < lines[i].length; a++) {
-                    if (lines[i][a - 1]) {
-                        var distance = getDistance(lines[i][a - 1], lines[i][a]);
+            for (var j = 0; j < lines.length; j++) {
+                for (var a = 0; a < lines[j].length; a++) {
+                    if (lines[j][a - 1]) {
+                        var distance = getDistance(lines[j][a - 1], lines[j][a]);
                         if (distance > buffer) {
-                            var extras = getMiddles(lines[i][a - 1], lines[i][a], distance / buffer);
+                            var extras = getMiddles(lines[j][a - 1], lines[j][a], distance / buffer);
                             for (var x = 0; x < extras.length; x++) {
                                 boxes.push(makeBox(extras[x], buffer));
                             }
                         }
                     }
-                    boxes.push(makeBox(lines[i][a], buffer));
+                    boxes.push(makeBox(lines[j][a], buffer));
                 }
             }
         }
-
 
         for (var w = 0; w < boxes.length; w++) {
             for (var z = minZoom; z < maxZoom + 1; z++) {
@@ -189,15 +188,15 @@ L.TileLayer.include({
                     northEastPoint.divideBy(tileSize)._floor(),
                     southWestPoint.divideBy(tileSize)._floor());
 
-                for (var j = tileBounds.min.y; j <= tileBounds.max.y; j++) {
-                    if (!map[z][j]) {
-                        map[z][j] = {};
+                for (var r = tileBounds.min.y; r <= tileBounds.max.y; r++) {
+                    if (!map[z][r]) {
+                        map[z][r] = {};
                     }
-                    for (var a = tileBounds.min.x; a <= tileBounds.max.x; a++) {
-                        if (!map[z][j][a]) {
-                            point = new L.Point(a, j);
+                    for (var c = tileBounds.min.x; c <= tileBounds.max.x; c++) {
+                        if (!map[z][r][c]) {
+                            point = new L.Point(c, r);
                             point.z = z;
-                            map[z][j][a] = true;
+                            map[z][r][c] = true;
                             queue.push(this.getTileUrl(point));
                         }
                     }
@@ -219,10 +218,10 @@ L.TileLayer.include({
 
         function makeBox(point, buffer) {
             var coords = [
-                point[0] - buffer,
                 point[1] - buffer,
-                point[0] + buffer,
+                point[0] - buffer,
                 point[1] + buffer,
+                point[0] + buffer,
             ];
             return L.latLngBounds(L.latLng(coords[0], coords[1]), L.latLng(coords[2], coords[3]));
         }
@@ -245,10 +244,10 @@ L.TileLayer.include({
             var coords = [];
 
             for (var i = 0; i < count - 1; i++) {
-                var x = start[1] + (end[1] - start[1]) * (i + 1) / count;
                 var y = start[0] + (end[0] - start[0]) * (i + 1) / count;
+                var x = start[1] + (end[1] - start[1]) * (i + 1) / count;
 
-                coords.push([x, y]);
+                coords.push([y, x]);
             }
 
             return coords;
